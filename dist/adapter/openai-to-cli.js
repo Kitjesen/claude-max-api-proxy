@@ -154,6 +154,7 @@ export function openaiToCli(request, continueSession = false) {
             ? extractLastUserImageParts(request.messages)
             : extractImageParts(request.messages), // Claude API image content parts
         continueSession,
+        maxTokens: request.max_tokens || request.max_completion_tokens || undefined,
     };
 }
 //# sourceMappingURL=openai-to-cli.js.map

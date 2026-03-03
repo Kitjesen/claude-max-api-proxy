@@ -132,12 +132,17 @@ export class ClaudeSubprocess extends EventEmitter {
             "--verbose",
             "--include-partial-messages",
             "--model", options.model,
-            "--no-session-persistence", // Re-enabled: session JSONL has CJK encoding bug
+            "--no-session-persistence",
             "--permission-mode", "bypassPermissions",
             "--tools", "default",
+            "--max-budget-usd", "5",
         ];
         if (useStreamJsonInput) {
             args.push("--input-format", "stream-json");
+        }
+        // Pass max_tokens if specified
+        if (options.maxTokens && Number.isFinite(options.maxTokens) && options.maxTokens > 0) {
+            args.push("--max-turns", String(Math.min(options.maxTokens, 32)));
         }
         // Assign session UUID for tracking (even without --resume)
         const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

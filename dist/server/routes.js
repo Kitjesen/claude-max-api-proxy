@@ -78,8 +78,9 @@ async function handleStreamingResponse(req, res, subprocess, cliInput, requestId
     res.write(":ok\n\n");
     return new Promise((resolve, reject) => {
         let isFirst = true;
-        let lastModel = "claude-sonnet-4";
+        let lastModel = "claude-sonnet-4-6";
         let isComplete = false;
+        let lastUsage = null;
         // Handle actual client disconnect (response stream closed)
         res.on("close", () => {
             if (!isComplete) {
@@ -110,15 +111,20 @@ async function handleStreamingResponse(req, res, subprocess, cliInput, requestId
                 isFirst = false;
             }
         });
-        // Handle final assistant message (for model name)
+        // Handle final assistant message (for model name and usage)
         subprocess.on("assistant", (message) => {
             lastModel = message.message.model;
+            if (message.message.usage) {
+                lastUsage = message.message.usage;
+            }
         });
-        subprocess.on("result", (_result) => {
+        subprocess.on("result", (result) => {
             isComplete = true;
+            // Collect usage from result if available
+            const usage = result.usage || lastUsage;
             if (!res.writableEnded) {
-                // Send final done chunk with finish_reason
-                const doneChunk = createDoneChunk(requestId, lastModel);
+                // Send final done chunk with finish_reason and usage
+                const doneChunk = createDoneChunk(requestId, lastModel, usage);
                 res.write(`data: ${JSON.stringify(doneChunk)}\n\n`);
                 res.write("data: [DONE]\n\n");
                 res.end();
@@ -155,6 +161,7 @@ async function handleStreamingResponse(req, res, subprocess, cliInput, requestId
             sessionId: cliInput.sessionId,
             imageParts: cliInput.imageParts,
             continueSession: cliInput.continueSession,
+            maxTokens: cliInput.maxTokens,
         }).catch((err) => {
             console.error("[Streaming] Subprocess start error:", err);
             reject(err);
@@ -203,6 +210,7 @@ async function handleNonStreamingResponse(res, subprocess, cliInput, requestId) 
             sessionId: cliInput.sessionId,
             imageParts: cliInput.imageParts,
             continueSession: cliInput.continueSession,
+            maxTokens: cliInput.maxTokens,
         })
             .catch((error) => {
             res.status(500).json({
@@ -222,27 +230,15 @@ async function handleNonStreamingResponse(res, subprocess, cliInput, requestId) 
  * Returns available models
  */
 export function handleModels(_req, res) {
+    const ts = Math.floor(Date.now() / 1000);
     res.json({
         object: "list",
         data: [
-            {
-                id: "claude-opus-4",
-                object: "model",
-                owned_by: "anthropic",
-                created: Math.floor(Date.now() / 1000),
-            },
-            {
-                id: "claude-sonnet-4",
-                object: "model",
-                owned_by: "anthropic",
-                created: Math.floor(Date.now() / 1000),
-            },
-            {
-                id: "claude-haiku-4",
-                object: "model",
-                owned_by: "anthropic",
-                created: Math.floor(Date.now() / 1000),
-            },
+            { id: "claude-opus-4-6", object: "model", owned_by: "anthropic", created: ts },
+            { id: "claude-sonnet-4-6", object: "model", owned_by: "anthropic", created: ts },
+            { id: "claude-opus-4-5", object: "model", owned_by: "anthropic", created: ts },
+            { id: "claude-sonnet-4-5", object: "model", owned_by: "anthropic", created: ts },
+            { id: "claude-haiku-4-5", object: "model", owned_by: "anthropic", created: ts },
         ],
     });
 }
