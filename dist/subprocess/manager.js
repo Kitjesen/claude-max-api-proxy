@@ -133,6 +133,8 @@ export class ClaudeSubprocess extends EventEmitter {
             "--include-partial-messages",
             "--model", options.model,
             "--no-session-persistence", // Re-enabled: session JSONL has CJK encoding bug
+            "--permission-mode", "bypassPermissions",
+            "--tools", "default",
         ];
         if (useStreamJsonInput) {
             args.push("--input-format", "stream-json");
