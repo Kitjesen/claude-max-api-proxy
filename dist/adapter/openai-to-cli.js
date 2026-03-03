@@ -15,6 +15,9 @@ const MODEL_MAP = {
     // With provider prefix (maxproxy/...)
     "maxproxy/claude-sonnet-4-6": "claude-sonnet-4-6",
     "maxproxy/claude-opus-4-6": "claude-opus-4-6",
+    "maxproxy/claude-sonnet-4-5": "claude-sonnet-4-5",
+    "maxproxy/claude-opus-4-5": "claude-opus-4-5",
+    "maxproxy/claude-haiku-4-5": "claude-haiku-4-5",
     // With old provider prefix
     "claude-code-cli/claude-opus-4": "claude-opus-4-5",
     "claude-code-cli/claude-sonnet-4": "claude-sonnet-4-5",
@@ -32,8 +35,8 @@ export function extractModel(model) {
     if (MODEL_MAP[model]) {
         return MODEL_MAP[model];
     }
-    // Try stripping provider prefix
-    const stripped = model.replace(/^claude-code-cli\//, "");
+    // Try stripping provider prefix (maxproxy/ or claude-code-cli/)
+    const stripped = model.replace(/^(maxproxy|claude-code-cli)\//, "");
     if (MODEL_MAP[stripped]) {
         return MODEL_MAP[stripped];
     }
@@ -95,6 +98,12 @@ function extractImageParts(messages) {
  *
  * Claude Code CLI in --print mode expects a single prompt, not a conversation.
  * We format the messages into a readable format that preserves context.
+ *
+ * System messages are embedded in prompt text with <system_instructions> tags
+ * instead of --append-system-prompt because:
+ * 1. shell:true on Windows doesn't escape args → command injection risk
+ * 2. Windows cmd.exe has ~8191 char limit → ENAMETOOLONG for long prompts
+ * 3. Prompt text is passed via stdin (safe for any length and encoding)
  */
 export function messagesToPrompt(messages) {
     const parts = [];
@@ -102,7 +111,7 @@ export function messagesToPrompt(messages) {
         const text = extractText(msg.content);
         switch (msg.role) {
             case "system":
-                parts.push(`<system>\n${text}\n</system>\n`);
+                parts.push(`<system_instructions>\n${text}\n</system_instructions>\n`);
                 break;
             case "user":
                 parts.push(text);

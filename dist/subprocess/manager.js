@@ -140,10 +140,15 @@ export class ClaudeSubprocess extends EventEmitter {
         if (useStreamJsonInput) {
             args.push("--input-format", "stream-json");
         }
-        // Pass max_tokens if specified
-        if (options.maxTokens && Number.isFinite(options.maxTokens) && options.maxTokens > 0) {
-            args.push("--max-turns", String(Math.min(options.maxTokens, 32)));
-        }
+        // NOTE: System prompts from OpenAI format are embedded in the prompt text
+        // (via <system_instructions> tags) instead of --append-system-prompt because:
+        // 1. shell:true on Windows doesn't escape args → command injection risk
+        // 2. Windows cmd.exe has ~8191 char limit → ENAMETOOLONG for long prompts
+        // 3. Prompt text is passed via stdin (safe for any length and encoding)
+        // NOTE: Claude CLI --print mode has no --max-tokens flag.
+        // max_tokens from OpenAI requests is intentionally NOT mapped to --max-turns
+        // (which limits agentic tool-use rounds, NOT output tokens).
+        // Output token limits are handled internally by the Claude API.
         // Assign session UUID for tracking (even without --resume)
         const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         if (options.sessionId && UUID_RE.test(options.sessionId)) {
